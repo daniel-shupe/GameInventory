@@ -1,0 +1,132 @@
+﻿@page "/Inventory/Games"
+@using GameData
+@using GameData.Models
+@using GameInventory.Models
+
+@inject IGamesData _db
+@inject IPlatformsData _plat
+@inject IPublishersData _pub
+@inject IGenresData _gen
+<h3>Games List</h3>
+
+<h4>Add New Game</h4>
+@if (platforms is null || genres is null || publishers is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+<EditForm Model="@newGame" OnValidSubmit="@InsertGame">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <InputText id="title" @bind-Value="newGame.Title" />
+    <InputSelect @bind-Value="newGame.Platform">
+        <option>Select a platform...</option>
+        @foreach (var platform in platforms)
+            {
+            <option value="@platform.Id">@platform.Name</option>
+            }
+    </InputSelect>
+    <InputSelect @bind-Value="newGame.Genre">
+        <option>Select a genre...</option>
+        @foreach (var genre in genres)
+            {
+            <option value="@genre.Id">@genre.Name</option>
+            }
+    </InputSelect>
+    <InputSelect @bind-Value="newGame.Publisher">
+        <option>Select a publisher...</option>
+        @foreach (var publisher in publishers)
+            {
+            <option value="@publisher.Id">@publisher.Name</option>
+            }
+    </InputSelect>
+    <InputCheckbox @bind-Value="newGame.Located">On the shelf?</InputCheckbox>
+    <button type="submit" class="btn btn-primary">Add Game</button>
+</EditForm>
+
+}
+<h4>Current Games</h4>
+@if (games is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Platform</th>
+                <td>Genre</td>
+                <th>Publisher</th>
+                <th>On shelf?</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var game in games)
+            {
+                <tr>
+                    <td>@game.Title</td>
+                    <td>@game.Platform</td>
+                    <td>@game.Genre</td>
+                    <td>@game.Publisher</td>
+                    <td>@game.Located</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<GameModel> games;
+    private List<PlatformModel> platforms;
+    private List<PublisherModel> publishers;
+    private List<GenreModel> genres;
+    private DisplayGameModel newGame = new DisplayGameModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        publishers = await _pub.GetPublishers();
+        platforms = await _plat.GetPlatforms();
+        genres = await _gen.GetGenres();
+        games = await _db.GetGames();
+    }
+
+    private async Task InsertGame()
+    {
+        string s = newGame.Title;
+        string first = s.Split(' ').First();
+        int i;
+        switch (first.ToLower())
+        {
+            case "the":
+                i = s.IndexOf(' ') + 1;
+                s = s.Substring(i) + ", " + first; ;
+                break;
+            case "a":
+                i = s.IndexOf(' ') + 1;
+                s = s.Substring(i) + ", " + first; ;
+                break;
+            case "an":
+                i = s.IndexOf(' ') + 1;
+                s = s.Substring(i) + ", " + first;
+                break;
+        }
+
+        GameModel g = new GameModel
+        {
+            Title = s,
+            Platform = newGame.Platform,
+            Genre = newGame.Genre,
+            Publisher = newGame.Publisher,
+            Located = newGame.Located
+        };
+
+        await _db.InsertGame(g);
+
+        games = await _db.GetGames();
+
+        newGame = new DisplayGameModel();
+    }
+}
